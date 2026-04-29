@@ -6,7 +6,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use rand::Rng;
-use rustui::{App, Spans, draw_chat_screen};
+use rustui::{App, Spans, draw_chat_screen, get_timestamp};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 
@@ -67,9 +67,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "message" => {
                         let from = json.get("from").and_then(|v| v.as_str()).unwrap_or("unknown");
                         let text = json.get("msg").and_then(|v| v.as_str()).unwrap_or("");
+                        let ts = get_timestamp();
                         app.add_message(format!(
                             "[{}] {}: {}",
-                            "00:00:00",
+                            ts,
                             from,
                             text
                         ));
@@ -112,7 +113,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if !app.input.is_empty() {
                                 let input = app.input.trim().to_string();
                                 
-                                let msg = format!("[{}] {}: {}", "00:02:00", app.my_id, input);
+                                let ts = get_timestamp();
+                                let msg = format!("[{}] {}: {}", ts, app.my_id, input);
                                 app.messages.push(Spans::from(msg));
                                 
                                 let send_msg = serde_json::json!({

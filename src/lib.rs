@@ -1,6 +1,8 @@
 pub use tui::text::Spans;
 pub use tui::style::Style;
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -9,6 +11,19 @@ use tui::{
     widgets::{Block, Borders, Paragraph, List, ListItem, Wrap},
     Frame,
 };
+
+pub fn get_timestamp() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = now.as_secs();
+    let hours = (secs / 3600) % 24;
+    let mins = (secs / 60) % 60;
+    let secs = secs % 60;
+    format!("{:02}:{:02}:{:02}", hours, mins, secs)
+}
+
+
 
 pub struct App {
     pub my_id: String,
@@ -20,10 +35,12 @@ pub struct App {
 
 impl App {
     pub fn new(my_id: String) -> Self {
+        let ts = get_timestamp();
+        let ts2 = ts.clone();
         let messages = vec![
             Spans::from(vec![
                 Span::raw("["),
-                Span::styled("00:00:01", Style::default().fg(Color::DarkGray)),
+                Span::styled(ts, Style::default().fg(Color::DarkGray)),
                 Span::raw("] "),
                 Span::styled("system", Style::default().fg(Color::Cyan).add_modifier(tui::style::Modifier::BOLD)),
                 Span::raw(":"),
@@ -32,7 +49,7 @@ impl App {
             ]),
             Spans::from(vec![
                 Span::raw("["),
-                Span::styled("00:00:02", Style::default().fg(Color::DarkGray)),
+                Span::styled(ts2, Style::default().fg(Color::DarkGray)),
                 Span::raw("] "),
                 Span::styled("system", Style::default().fg(Color::Cyan).add_modifier(tui::style::Modifier::BOLD)),
                 Span::raw(":"),
