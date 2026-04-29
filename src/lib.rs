@@ -73,6 +73,107 @@ let ts = get_timestamp();
     }
 }
 
+pub struct LoginState {
+    pub username: String,
+    pub password: String,
+    pub active_field: u8,
+    pub error: String,
+}
+
+impl LoginState {
+    pub fn new() -> Self {
+        Self {
+            username: String::new(),
+            password: String::new(),
+            active_field: 0,
+            error: String::new(),
+        }
+    }
+}
+
+pub fn draw_login_screen<W: std::io::Write>(f: &mut Frame<CrosstermBackend<W>>, area: Rect, state: &LoginState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(30),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let title = Paragraph::new(
+        Text::from("SECURE CHAT LOGIN")
+    )
+    .block(Block::default().title("").borders(Borders::NONE))
+    .style(Style::default().fg(Color::Yellow).add_modifier(tui::style::Modifier::BOLD))
+    .alignment(Alignment::Center);
+    f.render_widget(title, chunks[0]);
+
+    let form_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(3),
+        ])
+        .split(chunks[1]);
+
+    let username_style = if state.active_field == 0 {
+        Style::default().fg(Color::Green)
+    } else {
+        Style::default().fg(Color::White)
+    };
+    let username_input = Paragraph::new(state.username.as_str())
+        .block(
+            Block::default()
+                .title(" Username ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if state.active_field == 0 { Color::Green } else { Color::DarkGray }))
+        )
+        .style(username_style);
+    f.render_widget(username_input, form_chunks[0]);
+
+    let password_display: String = state.password.chars().map(|_| '*').collect();
+    let password_style = if state.active_field == 1 {
+        Style::default().fg(Color::Green)
+    } else {
+        Style::default().fg(Color::White)
+    };
+    let password_input = Paragraph::new(password_display.as_str())
+        .block(
+            Block::default()
+                .title(" Password ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if state.active_field == 1 { Color::Green } else { Color::DarkGray }))
+        )
+        .style(password_style);
+    f.render_widget(password_input, form_chunks[1]);
+
+    let help = Paragraph::new(
+        Text::from("Press TAB to switch fields | ENTER to login")
+    )
+    .block(Block::default().borders(Borders::NONE))
+    .style(Style::default().fg(Color::DarkGray))
+    .alignment(Alignment::Center);
+    f.render_widget(help, form_chunks[2]);
+
+    if !state.error.is_empty() {
+        let error_block = Paragraph::new(state.error.as_str())
+            .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Red)))
+            .style(Style::default().fg(Color::Red))
+            .alignment(Alignment::Center);
+        f.render_widget(error_block, chunks[2]);
+    }
+
+    if state.active_field == 0 {
+        let cursor_x = form_chunks[0].x + 1 + state.username.len().min(form_chunks[0].width as usize - 2) as u16;
+        f.set_cursor(cursor_x, form_chunks[0].y + 1);
+    } else {
+        let cursor_x = form_chunks[1].x + 1 + state.password.len().min(form_chunks[1].width as usize - 2) as u16;
+        f.set_cursor(cursor_x, form_chunks[1].y + 1);
+    }
+}
+
 pub fn draw_chat_screen<W: std::io::Write>(f: &mut Frame<CrosstermBackend<W>>, area: Rect, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
