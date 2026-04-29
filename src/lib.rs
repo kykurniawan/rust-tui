@@ -26,44 +26,42 @@ pub fn get_timestamp() -> String {
 
 
 pub struct App {
-    pub my_id: String,
+    pub username: String,
     pub messages: Vec<Spans<'static>>,
     pub input: String,
     pub input_scroll: u16,
     pub participants: Vec<String>,
+    pub authenticated: bool,
 }
 
 impl App {
-    pub fn new(my_id: String) -> Self {
-        let ts = get_timestamp();
-        let ts2 = ts.clone();
-        let messages = vec![
+    pub fn new() -> Self {
+        Self {
+            username: String::new(),
+            messages: vec![],
+            input: String::new(),
+            input_scroll: 0,
+            participants: vec![],
+            authenticated: false,
+        }
+    }
+
+    pub fn init(&mut self, username: String) {
+        self.username = username.clone();
+let ts = get_timestamp();
+        self.messages = vec![
             Spans::from(vec![
                 Span::raw("["),
                 Span::styled(ts, Style::default().fg(Color::DarkGray)),
                 Span::raw("] "),
                 Span::styled("system", Style::default().fg(Color::Cyan).add_modifier(tui::style::Modifier::BOLD)),
                 Span::raw(":"),
-                Span::raw(" Connected! Your ID: "),
-                Span::styled(my_id.clone(), Style::default().fg(Color::Yellow).add_modifier(tui::style::Modifier::BOLD)),
-            ]),
-            Spans::from(vec![
-                Span::raw("["),
-                Span::styled(ts2, Style::default().fg(Color::DarkGray)),
-                Span::raw("] "),
-                Span::styled("system", Style::default().fg(Color::Cyan).add_modifier(tui::style::Modifier::BOLD)),
-                Span::raw(":"),
-                Span::raw(" Type a message to broadcast to all participants"),
+                Span::raw(" Welcome "),
+                Span::styled(username.clone(), Style::default().fg(Color::Yellow).add_modifier(tui::style::Modifier::BOLD)),
+                Span::raw("! Type a message to broadcast."),
             ]),
         ];
-
-        Self {
-            my_id,
-            messages,
-            input: String::new(),
-            input_scroll: 0,
-            participants: vec![],
-        }
+        self.authenticated = true;
     }
 
     pub fn add_message(&mut self, msg: String) {
@@ -85,7 +83,11 @@ pub fn draw_chat_screen<W: std::io::Write>(f: &mut Frame<CrosstermBackend<W>>, a
         ])
         .split(area);
 
-    let status = format!("CONNECTED | ID: {} | {} participants", app.my_id, app.participants.len());
+    let status = if app.authenticated {
+        format!("Logged in as {} | {} participants", app.username, app.participants.len())
+    } else {
+        "Not authenticated".to_string()
+    };
 
     let header = Paragraph::new(
         Text::from(vec![Spans::from(vec![
