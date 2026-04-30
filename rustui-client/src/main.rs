@@ -1,13 +1,18 @@
 use std::time::Duration;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers,
+    },
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use rustui_client::{App, Spans, LoginState, FocusedSection, draw_chat_screen, draw_login_screen, get_timestamp, crypto::Crypto};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
+use rustui_client::{
+    App, FocusedSection, LoginState, Spans, crypto::Crypto, draw_chat_screen, draw_login_screen,
+    get_timestamp,
+};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -47,20 +52,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             login_state.error.clear();
                         }
-                        KeyCode::Backspace => {
-                            match login_state.active_field {
-                                0 => { login_state.server_address.pop(); }
-                                1 => { login_state.username.pop(); }
-                                2 => { login_state.password.pop(); }
-                                3 => { login_state.encryption_key.pop(); }
-                                _ => {}
+                        KeyCode::Backspace => match login_state.active_field {
+                            0 => {
+                                login_state.server_address.pop();
                             }
-                        }
+                            1 => {
+                                login_state.username.pop();
+                            }
+                            2 => {
+                                login_state.password.pop();
+                            }
+                            3 => {
+                                login_state.encryption_key.pop();
+                            }
+                            _ => {}
+                        },
                         KeyCode::Enter => {
-                            if !login_state.server_address.is_empty() 
-                                && !login_state.username.is_empty() 
+                            if !login_state.server_address.is_empty()
+                                && !login_state.username.is_empty()
                                 && !login_state.password.is_empty()
-                                && !login_state.encryption_key.is_empty() {
+                                && !login_state.encryption_key.is_empty()
+                            {
                                 break;
                             } else {
                                 login_state.error = "All fields are required".to_string();
@@ -137,7 +149,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                     "error" => {
-                        let err_msg = json.get("msg").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+                        let err_msg = json
+                            .get("msg")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown error");
                         login_state.error = err_msg.to_string();
                     }
                     _ => {
@@ -186,7 +201,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match msg_type {
                 "list" => {
                     if let Some(clients) = json.get("clients").and_then(|v| v.as_array()) {
-                        let ids: Vec<String> = clients.iter()
+                        let ids: Vec<String> = clients
+                            .iter()
                             .filter_map(|c| c.as_str().map(String::from))
                             .collect();
                         app.set_participants(ids);
@@ -209,29 +225,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or("");
                 match msg_type {
                     "message" => {
-                        let from = json.get("from").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let from = json
+                            .get("from")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
                         let encrypted_text = json.get("msg").and_then(|v| v.as_str()).unwrap_or("");
                         let ts = get_timestamp();
-                        
+
                         // Try to decrypt the message
                         let display_text = match crypto.decrypt(encrypted_text) {
                             Ok(decrypted) => decrypted,
                             Err(_) => format!("[encrypted: {}]", encrypted_text),
                         };
-                        
+
                         app.add_message(format!("[{}] {}: {}", ts, from, display_text));
                     }
                     "list" => {
                         if let Some(clients) = json.get("clients").and_then(|v| v.as_array()) {
-                            let ids: Vec<String> = clients.iter()
+                            let ids: Vec<String> = clients
+                                .iter()
                                 .filter_map(|c| c.as_str().map(String::from))
                                 .collect();
                             app.set_participants(ids);
                         }
                     }
                     "error" => {
-                        let err_msg = json.get("msg").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+                        let err_msg = json
+                            .get("msg")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown error");
                         app.add_message(format!("[system] Error: {}", err_msg));
+                    }
+                    "system" => {
+                        let ts = get_timestamp();
+                        let sys_msg = json.get("msg").and_then(|v| v.as_str()).unwrap_or("");
+                        app.add_message(format!("[{}] system: {}", ts, sys_msg));
                     }
                     _ => {}
                 }
@@ -242,8 +270,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     // Handle Shift+Tab to toggle focus
-                    if key.code == KeyCode::BackTab || 
-                       (key.code == KeyCode::Tab && key.modifiers.contains(KeyModifiers::SHIFT)) {
+                    if key.code == KeyCode::BackTab
+                        || (key.code == KeyCode::Tab && key.modifiers.contains(KeyModifiers::SHIFT))
+                    {
                         app.toggle_focus();
                         continue;
                     }
@@ -286,25 +315,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     if !app.input.is_empty() && authenticated {
                                         let input = app.input.trim().to_string();
                                         let ts = get_timestamp();
-                                        
+
                                         // Encrypt the message before sending
                                         match crypto.encrypt(&input) {
                                             Ok(encrypted) => {
                                                 // Show plaintext in our own chat
-                                                let msg = format!("[{}] {}: {}", ts, app.username, input);
+                                                let msg =
+                                                    format!("[{}] {}: {}", ts, app.username, input);
                                                 app.messages.push(Spans::from(msg));
-                                                
+
                                                 // Send encrypted message to server
                                                 let send_msg = serde_json::json!({
                                                     "Broadcast": { "msg": encrypted }
                                                 });
-                                                let _ = write.send(Message::Text(send_msg.to_string())).await;
+                                                let _ = write
+                                                    .send(Message::Text(send_msg.to_string()))
+                                                    .await;
                                             }
                                             Err(e) => {
-                                                app.add_message(format!("[system] Encryption error: {}", e));
+                                                app.add_message(format!(
+                                                    "[system] Encryption error: {}",
+                                                    e
+                                                ));
                                             }
                                         }
-                                        
+
                                         app.input.clear();
                                         app.input_cursor_pos = 0;
                                     }
@@ -313,35 +348,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 _ => {}
                             }
                         }
-                        FocusedSection::MessageList => {
-                            match key.code {
-                                KeyCode::Up => {
+                        FocusedSection::MessageList => match key.code {
+                            KeyCode::Up => {
+                                app.scroll_up();
+                            }
+                            KeyCode::Down => {
+                                app.scroll_down();
+                            }
+                            KeyCode::PageUp => {
+                                for _ in 0..10 {
                                     app.scroll_up();
                                 }
-                                KeyCode::Down => {
+                            }
+                            KeyCode::PageDown => {
+                                for _ in 0..10 {
                                     app.scroll_down();
                                 }
-                                KeyCode::PageUp => {
-                                    for _ in 0..10 {
-                                        app.scroll_up();
-                                    }
-                                }
-                                KeyCode::PageDown => {
-                                    for _ in 0..10 {
-                                        app.scroll_down();
-                                    }
-                                }
-                                KeyCode::Home => {
-                                    app.message_scroll = 0;
-                                    app.auto_scroll = false;
-                                }
-                                KeyCode::End => {
-                                    app.scroll_to_bottom();
-                                }
-                                KeyCode::Esc => break,
-                                _ => {}
                             }
-                        }
+                            KeyCode::Home => {
+                                app.message_scroll = 0;
+                                app.auto_scroll = false;
+                            }
+                            KeyCode::End => {
+                                app.scroll_to_bottom();
+                            }
+                            KeyCode::Esc => break,
+                            _ => {}
+                        },
                     }
                 }
             }

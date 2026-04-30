@@ -99,7 +99,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                             )).await.ok();
                                                             
                                                             println!("User authenticated: {}", username);
-                                                            
+
+                                                            // Broadcast "user joined" system message to all other clients
+                                                            let join_msg = serde_json::json!({
+                                                                "type": "system",
+                                                                "msg": format!("{} joined the chat", username)
+                                                            }).to_string();
+
                                                             // Get the updated client list and broadcast to everyone
                                                             let ids: Vec<String>;
                                                             {
@@ -110,6 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                                 // Send to all OTHER clients via their channels
                                                                 for (client_id, sender) in clients.iter() {
                                                                     if client_id != &username {
+                                                                        let _ = sender.send(join_msg.clone()).await;
                                                                         let _ = sender.send(list_msg.clone()).await;
                                                                     }
                                                                 }
@@ -169,11 +176,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         println!("Client {} disconnected", peer_addr);
                                         if !my_username.is_empty() {
                                             let mut clients = clients.write().await;
+                                            let leaving_user = my_username.clone();
                                             clients.remove(&my_username);
+                                            
+                                            // Broadcast "user left" system message
+                                            let leave_msg = serde_json::json!({
+                                                "type": "system",
+                                                "msg": format!("{} left the chat", leaving_user)
+                                            }).to_string();
                                             
                                             let ids: Vec<String> = clients.keys().cloned().collect();
                                             let list_msg = serde_json::json!({"type": "list", "clients": ids}).to_string();
                                             for (_, sender) in clients.iter() {
+                                                let _ = sender.send(leave_msg.clone()).await;
                                                 let _ = sender.send(list_msg.clone()).await;
                                             }
                                         } else {
@@ -186,11 +201,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         println!("Client {} connection error or closed", peer_addr);
                                         if !my_username.is_empty() {
                                             let mut clients = clients.write().await;
+                                            let leaving_user = my_username.clone();
                                             clients.remove(&my_username);
+                                            
+                                            // Broadcast "user left" system message
+                                            let leave_msg = serde_json::json!({
+                                                "type": "system",
+                                                "msg": format!("{} left the chat", leaving_user)
+                                            }).to_string();
                                             
                                             let ids: Vec<String> = clients.keys().cloned().collect();
                                             let list_msg = serde_json::json!({"type": "list", "clients": ids}).to_string();
                                             for (_, sender) in clients.iter() {
+                                                let _ = sender.send(leave_msg.clone()).await;
                                                 let _ = sender.send(list_msg.clone()).await;
                                             }
                                         } else {
