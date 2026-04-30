@@ -484,7 +484,7 @@ pub fn draw_chat_screen<W: std::io::Write>(
     };
 
     let focus_indicator = if app.focus == FocusedSection::MessageList {
-        " [FOCUSED] "
+        " [A] "
     } else {
         " "
     };
@@ -549,7 +549,7 @@ pub fn draw_chat_screen<W: std::io::Write>(
         .block(
             Block::default()
                 .title(if app.focus == FocusedSection::Input {
-                    " MESSAGE >> [FOCUSED] "
+                    " MESSAGE >> [A] "
                 } else {
                     " MESSAGE >> "
                 })
