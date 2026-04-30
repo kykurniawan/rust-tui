@@ -20,18 +20,30 @@
   - Uses character count instead of byte count for accurate positioning
   - Auto-scrolls input area when typing beyond visible lines
   - Handles multi-line input properly with bounds checking
+  - Supports full cursor movement (left, right, up, down)
+  - Can edit text at any position, not just at the end
 
 ### Added
-- **Enhanced scroll controls**:
+- **Focus system**: Switch between Message List and Input Field
+  - Press `SHIFT+TAB` to toggle focus between sections
+  - Visual indicators show which section is focused (`[FOCUSED]`)
+  - Focused section has colored border (Cyan for messages, Green for input)
+  - Cursor only visible when input field is focused
+
+- **Enhanced input controls** (when input is focused):
+  - `LEFT/RIGHT` arrows: Move cursor horizontally
+  - `UP/DOWN` arrows: Move cursor vertically in multi-line input
+  - `HOME`: Jump to start of input
+  - `END`: Jump to end of input
+  - `DELETE`: Delete character after cursor
+  - Full cursor positioning support for editing anywhere in the text
+
+- **Enhanced message list controls** (when message list is focused):
   - `UP/DOWN` arrows: Scroll one message at a time
   - `PAGE UP/PAGE DOWN`: Scroll 10 messages at a time
-  - `END` key: Jump to the latest message (bottom)
-  - Visual scroll indicator showing current position (e.g., "[5/20] ↑↓ to scroll | END to bottom")
-  
-- **Improved UX**:
-  - Selected message highlighted with yellow color and `>>` indicator
-  - Scroll position indicator in the messages panel title
-  - Auto-scroll intelligently follows new messages when at bottom
+  - `HOME`: Jump to first message
+  - `END`: Jump to latest message
+  - Visual scroll indicator showing current position
 
 ### Changed
 - `App.message_scroll` type changed from `u16` to `usize` for better indexing

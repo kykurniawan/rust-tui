@@ -53,10 +53,34 @@ cargo run -p rustui-client
 
 ## Controls
 
-- **TAB**: Switch between username and password fields (login screen)
-- **ENTER**: Submit login / Send message
-- **ESC**: Exit application
+### Login Screen
+- **TAB**: Switch between username and password fields
+- **ENTER**: Submit login
+- **BACKSPACE**: Delete character
+
+### Chat Screen
+
+**Focus Management:**
+- **SHIFT+TAB**: Toggle focus between Message List and Input Field
+  - Focused section is highlighted with `[FOCUSED]` indicator
+  - Message List: Cyan border when focused
+  - Input Field: Green border when focused
+
+**When Message List is Focused:**
 - **UP/DOWN**: Scroll through messages one at a time
 - **PAGE UP/PAGE DOWN**: Scroll through messages 10 at a time
-- **END**: Jump to the bottom of messages (latest)
-- **BACKSPACE**: Delete character
+- **HOME**: Jump to first message
+- **END**: Jump to the latest message (bottom)
+
+**When Input Field is Focused:**
+- **Type**: Enter text
+- **LEFT/RIGHT**: Move cursor horizontally
+- **UP/DOWN**: Move cursor vertically (for multi-line input)
+- **HOME**: Move cursor to start of input
+- **END**: Move cursor to end of input
+- **BACKSPACE**: Delete character before cursor
+- **DELETE**: Delete character after cursor
+- **ENTER**: Send message
+
+**Global:**
+- **ESC**: Exit application

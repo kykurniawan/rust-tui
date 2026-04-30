@@ -1,11 +1,11 @@
 use std::time::Duration;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use rustui_client::{App, Spans, LoginState, draw_chat_screen, draw_login_screen, get_timestamp};
+use rustui_client::{App, Spans, LoginState, FocusedSection, draw_chat_screen, draw_login_screen, get_timestamp};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 
@@ -144,49 +144,96 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char(c) => {
-                            app.input.push(c);
-                        }
-                        KeyCode::Backspace => {
-                            app.input.pop();
-                        }
-                        KeyCode::Enter => {
-                            if !app.input.is_empty() && authenticated {
-                                let input = app.input.trim().to_string();
-                                let ts = get_timestamp();
-                                let msg = format!("[{}] {}: {}", ts, app.username, input);
-                                app.messages.push(Spans::from(msg));
-                                
-                                let send_msg = serde_json::json!({
-                                    "Broadcast": { "msg": input }
-                                });
-                                let _ = write.send(Message::Text(send_msg.to_string())).await;
-                                
-                                app.input.clear();
+                    // Handle Shift+Tab to toggle focus
+                    if key.code == KeyCode::BackTab || 
+                       (key.code == KeyCode::Tab && key.modifiers.contains(KeyModifiers::SHIFT)) {
+                        app.toggle_focus();
+                        continue;
+                    }
+
+                    match app.focus {
+                        FocusedSection::Input => {
+                            // Get terminal width for cursor movement calculations
+                            let term_size = terminal.size()?;
+                            let input_width = term_size.width.saturating_sub(4) as usize;
+
+                            match key.code {
+                                KeyCode::Char(c) => {
+                                    app.insert_char(c);
+                                }
+                                KeyCode::Backspace => {
+                                    app.delete_char();
+                                }
+                                KeyCode::Delete => {
+                                    app.delete_char_forward();
+                                }
+                                KeyCode::Left => {
+                                    app.move_cursor_left();
+                                }
+                                KeyCode::Right => {
+                                    app.move_cursor_right();
+                                }
+                                KeyCode::Up => {
+                                    app.move_cursor_up(input_width);
+                                }
+                                KeyCode::Down => {
+                                    app.move_cursor_down(input_width);
+                                }
+                                KeyCode::Home => {
+                                    app.move_cursor_to_start();
+                                }
+                                KeyCode::End => {
+                                    app.move_cursor_to_end();
+                                }
+                                KeyCode::Enter => {
+                                    if !app.input.is_empty() && authenticated {
+                                        let input = app.input.trim().to_string();
+                                        let ts = get_timestamp();
+                                        let msg = format!("[{}] {}: {}", ts, app.username, input);
+                                        app.messages.push(Spans::from(msg));
+                                        
+                                        let send_msg = serde_json::json!({
+                                            "Broadcast": { "msg": input }
+                                        });
+                                        let _ = write.send(Message::Text(send_msg.to_string())).await;
+                                        
+                                        app.input.clear();
+                                        app.input_cursor_pos = 0;
+                                    }
+                                }
+                                KeyCode::Esc => break,
+                                _ => {}
                             }
                         }
-                        KeyCode::Up => {
-                            app.scroll_up();
-                        }
-                        KeyCode::Down => {
-                            app.scroll_down();
-                        }
-                        KeyCode::End => {
-                            app.scroll_to_bottom();
-                        }
-                        KeyCode::PageUp => {
-                            for _ in 0..10 {
-                                app.scroll_up();
+                        FocusedSection::MessageList => {
+                            match key.code {
+                                KeyCode::Up => {
+                                    app.scroll_up();
+                                }
+                                KeyCode::Down => {
+                                    app.scroll_down();
+                                }
+                                KeyCode::PageUp => {
+                                    for _ in 0..10 {
+                                        app.scroll_up();
+                                    }
+                                }
+                                KeyCode::PageDown => {
+                                    for _ in 0..10 {
+                                        app.scroll_down();
+                                    }
+                                }
+                                KeyCode::Home => {
+                                    app.message_scroll = 0;
+                                    app.auto_scroll = false;
+                                }
+                                KeyCode::End => {
+                                    app.scroll_to_bottom();
+                                }
+                                KeyCode::Esc => break,
+                                _ => {}
                             }
                         }
-                        KeyCode::PageDown => {
-                            for _ in 0..10 {
-                                app.scroll_down();
-                            }
-                        }
-                        KeyCode::Esc => break,
-                        _ => {}
                     }
                 }
             }

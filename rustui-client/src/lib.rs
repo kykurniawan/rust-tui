@@ -28,10 +28,18 @@ pub struct App {
     pub messages: Vec<Spans<'static>>,
     pub input: String,
     pub input_scroll: u16,
+    pub input_cursor_pos: usize,
     pub message_scroll: usize,
     pub participants: Vec<String>,
     pub authenticated: bool,
     pub auto_scroll: bool,
+    pub focus: FocusedSection,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusedSection {
+    MessageList,
+    Input,
 }
 
 impl App {
@@ -41,10 +49,12 @@ impl App {
             messages: vec![],
             input: String::new(),
             input_scroll: 0,
+            input_cursor_pos: 0,
             message_scroll: 0,
             participants: vec![],
             authenticated: false,
             auto_scroll: true,
+            focus: FocusedSection::Input,
         }
     }
 
@@ -105,6 +115,74 @@ impl App {
     pub fn scroll_to_bottom(&mut self) {
         self.message_scroll = self.messages.len().saturating_sub(1);
         self.auto_scroll = true;
+    }
+
+    pub fn toggle_focus(&mut self) {
+        self.focus = match self.focus {
+            FocusedSection::MessageList => FocusedSection::Input,
+            FocusedSection::Input => FocusedSection::MessageList,
+        };
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        if self.input_cursor_pos > 0 {
+            self.input_cursor_pos -= 1;
+        }
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        let char_count = self.input.chars().count();
+        if self.input_cursor_pos < char_count {
+            self.input_cursor_pos += 1;
+        }
+    }
+
+    pub fn move_cursor_up(&mut self, line_width: usize) {
+        if line_width > 0 && self.input_cursor_pos >= line_width {
+            self.input_cursor_pos = self.input_cursor_pos.saturating_sub(line_width);
+        }
+    }
+
+    pub fn move_cursor_down(&mut self, line_width: usize) {
+        let char_count = self.input.chars().count();
+        if line_width > 0 {
+            let new_pos = self.input_cursor_pos + line_width;
+            if new_pos <= char_count {
+                self.input_cursor_pos = new_pos;
+            } else {
+                self.input_cursor_pos = char_count;
+            }
+        }
+    }
+
+    pub fn insert_char(&mut self, c: char) {
+        let byte_pos = self.input.chars().take(self.input_cursor_pos).map(|c| c.len_utf8()).sum();
+        self.input.insert(byte_pos, c);
+        self.input_cursor_pos += 1;
+    }
+
+    pub fn delete_char(&mut self) {
+        if self.input_cursor_pos > 0 {
+            let byte_pos = self.input.chars().take(self.input_cursor_pos - 1).map(|c| c.len_utf8()).sum();
+            self.input.remove(byte_pos);
+            self.input_cursor_pos -= 1;
+        }
+    }
+
+    pub fn delete_char_forward(&mut self) {
+        let char_count = self.input.chars().count();
+        if self.input_cursor_pos < char_count {
+            let byte_pos = self.input.chars().take(self.input_cursor_pos).map(|c| c.len_utf8()).sum();
+            self.input.remove(byte_pos);
+        }
+    }
+
+    pub fn move_cursor_to_start(&mut self) {
+        self.input_cursor_pos = 0;
+    }
+
+    pub fn move_cursor_to_end(&mut self) {
+        self.input_cursor_pos = self.input.chars().count();
     }
 }
 
@@ -262,7 +340,7 @@ pub fn draw_chat_screen<W: std::io::Write>(
     };
 
     let header = Paragraph::new(Text::from(vec![Spans::from(vec![
-        Span::raw(">> SECURE_CHAT | "),
+        Span::raw(">> SECURE CHAT | "),
         Span::styled(
             status,
             Style::default()
@@ -337,11 +415,21 @@ pub fn draw_chat_screen<W: std::io::Write>(
         String::new()
     };
 
+    let focus_indicator = if app.focus == FocusedSection::MessageList {
+        " [FOCUSED] "
+    } else {
+        " "
+    };
+
     // Render the messages block
     let messages_block = Block::default()
-        .title(format!(" MESSAGES{} ", scroll_indicator))
+        .title(format!(" MESSAGES{}{}", scroll_indicator, focus_indicator))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(if app.focus == FocusedSection::MessageList {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        }));
     
     f.render_widget(messages_block, chunks[1]);
 
@@ -393,11 +481,23 @@ pub fn draw_chat_screen<W: std::io::Write>(
     let input_block = Paragraph::new(app.input.as_str())
         .block(
             Block::default()
-                .title(" MESSAGE >> ")
+                .title(if app.focus == FocusedSection::Input {
+                    " MESSAGE >> [FOCUSED] "
+                } else {
+                    " MESSAGE >> "
+                })
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Green)),
+                .border_style(Style::default().fg(if app.focus == FocusedSection::Input {
+                    Color::Green
+                } else {
+                    Color::DarkGray
+                })),
         )
-        .style(Style::default().fg(Color::Green))
+        .style(Style::default().fg(if app.focus == FocusedSection::Input {
+            Color::Green
+        } else {
+            Color::DarkGray
+        }))
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: false })
         .scroll((app.input_scroll, 0));
@@ -405,16 +505,16 @@ pub fn draw_chat_screen<W: std::io::Write>(
     f.render_widget(input_block, chunks[2]);
 
     let input_area = chunks[2];
-    if input_area.width > 2 && input_area.height > 2 {
+    if input_area.width > 2 && input_area.height > 2 && app.focus == FocusedSection::Input {
         let line_width = (input_area.width - 2) as usize;
         
         if line_width > 0 {
-            // Count actual characters (not bytes)
-            let char_count = app.input.chars().count();
+            // Use cursor position instead of input length
+            let cursor_pos = app.input_cursor_pos;
             
             // Calculate which line the cursor is on
-            let cursor_line = char_count / line_width;
-            let cursor_col = char_count % line_width;
+            let cursor_line = cursor_pos / line_width;
+            let cursor_col = cursor_pos % line_width;
             
             // Calculate visible lines in the input area
             let visible_lines = (input_area.height - 2) as usize;
