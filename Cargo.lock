@@ -586,17 +586,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustui"
+name = "rustui-client"
 version = "0.1.0"
 dependencies = [
  "crossterm 0.29.0",
  "futures-util",
- "rand",
  "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite",
  "tui",
+]
+
+[[package]]
+name = "rustui-server"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

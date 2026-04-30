@@ -1,1 +1,4 @@
 /target
+/rustui-client/target
+/rustui-server/target
+Cargo.lock

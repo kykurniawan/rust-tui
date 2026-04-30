@@ -5,7 +5,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use rustui::{App, Spans, LoginState, draw_chat_screen, draw_login_screen, get_timestamp};
+use rustui_client::{App, Spans, LoginState, draw_chat_screen, draw_login_screen, get_timestamp};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 
