@@ -399,7 +399,7 @@ pub fn draw_chat_screen<W: std::io::Write>(
         )
         .style(Style::default().fg(Color::Green))
         .alignment(Alignment::Left)
-        .wrap(Wrap { trim: true })
+        .wrap(Wrap { trim: false })
         .scroll((app.input_scroll, 0));
 
     f.render_widget(input_block, chunks[2]);
@@ -407,29 +407,37 @@ pub fn draw_chat_screen<W: std::io::Write>(
     let input_area = chunks[2];
     if input_area.width > 2 && input_area.height > 2 {
         let line_width = (input_area.width - 2) as usize;
-        let input_len = app.input.len();
-        let current_line = if line_width > 0 {
-            input_len / line_width
-        } else {
-            0
-        };
-        let visible_lines = (input_area.height - 2) as usize;
-
-        if current_line >= (app.input_scroll as usize + visible_lines) {
-            app.input_scroll = ((current_line + 1).saturating_sub(visible_lines)) as u16;
-        } else if current_line < app.input_scroll as usize && app.input_scroll > 0 {
-            app.input_scroll = current_line as u16;
+        
+        if line_width > 0 {
+            // Count actual characters (not bytes)
+            let char_count = app.input.chars().count();
+            
+            // Calculate which line the cursor is on
+            let cursor_line = char_count / line_width;
+            let cursor_col = char_count % line_width;
+            
+            // Calculate visible lines in the input area
+            let visible_lines = (input_area.height - 2) as usize;
+            
+            // Auto-scroll the input if cursor goes beyond visible area
+            if cursor_line >= visible_lines {
+                app.input_scroll = (cursor_line - visible_lines + 1) as u16;
+            } else if cursor_line < app.input_scroll as usize {
+                app.input_scroll = cursor_line as u16;
+            }
+            
+            // Calculate cursor position relative to the scrolled view
+            let visible_cursor_line = cursor_line.saturating_sub(app.input_scroll as usize);
+            
+            // Set cursor position
+            let cursor_x = input_area.x + 1 + cursor_col as u16;
+            let cursor_y = input_area.y + 1 + visible_cursor_line as u16;
+            
+            // Make sure cursor is within bounds
+            if cursor_x < input_area.x + input_area.width - 1 
+                && cursor_y < input_area.y + input_area.height - 1 {
+                f.set_cursor(cursor_x, cursor_y);
+            }
         }
-
-        let cursor_col = if line_width > 0 {
-            input_len % line_width
-        } else {
-            0
-        };
-        let cursor_row = current_line.saturating_sub(app.input_scroll as usize);
-        let cursor_x = input_area.x + 1 + cursor_col as u16;
-        let cursor_y = input_area.y + 1 + cursor_row as u16;
-
-        f.set_cursor(cursor_x, cursor_y);
     }
 }

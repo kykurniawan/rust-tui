@@ -15,6 +15,12 @@
   - Scroll calculation accounts for multi-line messages
   - No more truncated text - all content is visible
 
+- **Input cursor positioning**: Fixed cursor placement when input text wraps
+  - Cursor now correctly positioned on wrapped lines
+  - Uses character count instead of byte count for accurate positioning
+  - Auto-scrolls input area when typing beyond visible lines
+  - Handles multi-line input properly with bounds checking
+
 ### Added
 - **Enhanced scroll controls**:
   - `UP/DOWN` arrows: Scroll one message at a time
