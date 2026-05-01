@@ -1,0 +1,16 @@
+name: rustui
+services:
+  rustui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - rustui-data:/root/.rustui
+    networks:
+      - internal
+volumes:
+  rustui-data:
+networks:
+  internal:
+    external: true

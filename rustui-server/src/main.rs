@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = init_db();
     let clients: ClientMap = Arc::new(RwLock::new(HashMap::new()));
 
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let listener = TcpListener::bind("0.0.0.0:8080").await?;
     println!("WebSocket server listening on ws://127.0.0.1:8080");
     println!("Connect to rooms at: ws://127.0.0.1:8080/room/<room-name>");
 
