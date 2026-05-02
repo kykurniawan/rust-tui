@@ -246,7 +246,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             loop {
                 match connect_async(&reconnect_url).await {
                     Ok((new_stream, _)) => {
-                        let (new_write, new_read) = new_stream.split();
+                        let (new_write, mut new_read) = new_stream.split();
                         write = new_write;
 
                         let (new_tx, new_rx) = tokio::sync::mpsc::channel::<String>(100);
